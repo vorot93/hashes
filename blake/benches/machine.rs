@@ -5,7 +5,7 @@ use blake::simd::{x86_64, Machine};
 use test::Bencher;
 
 macro_rules! mach_bench {
-    ($compressor:ident, $X4:ident, $MachName:ident, $feature:expr, $enable:expr) => {
+    ($MachName:ident, $feature:expr, $enable:expr) => {
         #[allow(non_snake_case)]
         #[allow(non_snake_case)]
         #[bench]
@@ -14,12 +14,12 @@ macro_rules! mach_bench {
                 return;
             }
             let m = unsafe { x86_64::$MachName::instance() };
-            let mut state = blake::$compressor::default();
+            let mut state = blake::Compressor::default();
             let input = [0; 128];
             #[target_feature(enable = $feature)]
-            unsafe fn runner<M: Machine>(m: M, state: &mut blake::$compressor, input: &[u8; 128]) {
-                for _ in 0..10240 / (std::mem::size_of::<blake::$compressor>() * 4) {
-                    blake::$X4::put_block(m, state, std::mem::transmute(input), (0, 0));
+            unsafe fn runner<M: Machine>(m: M, state: &mut blake::Compressor, input: &[u8; 128]) {
+                for _ in 0..10240 / (std::mem::size_of::<blake::Compressor>() * 4) {
+                    blake::u32x4::put_block(m, state, std::mem::transmute(input), (0, 0));
                 }
             }
             b.iter(|| unsafe { runner(m, &mut state, &input) });
@@ -28,80 +28,8 @@ macro_rules! mach_bench {
     };
 }
 
-mod blake256 {
-    use super::*;
-    mach_bench!(
-        Compressor256,
-        u32x4,
-        SSE2,
-        "sse2",
-        is_x86_feature_detected!("sse2")
-    );
-    mach_bench!(
-        Compressor256,
-        u32x4,
-        SSSE3,
-        "ssse3",
-        is_x86_feature_detected!("ssse3")
-    );
-    mach_bench!(
-        Compressor256,
-        u32x4,
-        SSE41,
-        "sse4.1",
-        is_x86_feature_detected!("sse4.1")
-    );
-    mach_bench!(
-        Compressor256,
-        u32x4,
-        AVX,
-        "avx",
-        is_x86_feature_detected!("avx")
-    );
-    mach_bench!(
-        Compressor256,
-        u32x4,
-        AVX2,
-        "avx2",
-        is_x86_feature_detected!("avx2")
-    );
-}
-
-mod blake512 {
-    use super::*;
-    mach_bench!(
-        Compressor512,
-        u64x4,
-        SSE2,
-        "sse2",
-        is_x86_feature_detected!("sse2")
-    );
-    mach_bench!(
-        Compressor512,
-        u64x4,
-        SSSE3,
-        "ssse3",
-        is_x86_feature_detected!("ssse3")
-    );
-    mach_bench!(
-        Compressor512,
-        u64x4,
-        SSE41,
-        "sse4.1",
-        is_x86_feature_detected!("sse4.1")
-    );
-    mach_bench!(
-        Compressor512,
-        u64x4,
-        AVX,
-        "avx",
-        is_x86_feature_detected!("avx")
-    );
-    mach_bench!(
-        Compressor512,
-        u64x4,
-        AVX2,
-        "avx2",
-        is_x86_feature_detected!("avx2")
-    );
-}
+mach_bench!(SSE2, "sse2", is_x86_feature_detected!("sse2"));
+mach_bench!(SSSE3, "ssse3", is_x86_feature_detected!("ssse3"));
+mach_bench!(SSE41, "sse4.1", is_x86_feature_detected!("sse4.1"));
+mach_bench!(AVX, "avx", is_x86_feature_detected!("avx"));
+mach_bench!(AVX2, "avx2", is_x86_feature_detected!("avx2"));
